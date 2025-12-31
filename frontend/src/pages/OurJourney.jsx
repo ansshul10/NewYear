@@ -391,7 +391,7 @@ const OurJourney = () => {
                           ) : (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400 group-hover:text-[#FF1493]">
                               <Camera size={48} className="mb-4" />
-                              <p className="text-sm uppercase tracking-widest font-semibold">Upload Your Magic ✨</p>
+                              <p className="text-sm uppercase tracking-widest font-semibold">Upload Your Gift To Love ✨</p>
                               <p className="text-xs mt-2 text-gray-500">Fully Encrypted • For Love Only</p>
                             </div>
                           )}
