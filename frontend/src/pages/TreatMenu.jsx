@@ -116,7 +116,7 @@ const TreatMenu = () => {
   const finalizeOrder = async () => {
     playSound("heart");
     try {
-      await axios.post('http://localhost:5000/api/orders', {
+      await axios.post('https://newyear-n16i.onrender.com/api/orders', {
         items: basket,
         loveNote: loveNote || "All my love included ❤️"
       });
