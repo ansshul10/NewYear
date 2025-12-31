@@ -17,7 +17,7 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB Connected'))
   .catch(err => console.error('❌ DB Error:', err));
 
-// Order Schema - Detailed & Proper
+// Order Schema
 const orderSchema = new mongoose.Schema({
   items: [
     {
@@ -35,39 +35,50 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
-// Nodemailer Setup
+// Nodemailer Transporter - Proper SMTP Config for Gmail Port 587
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: false, // true for 465, false for 587 (STARTTLS)
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS // Use App Password!
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS // Must be Gmail App Password
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
-// Verify email connection
+// Verify connection on startup
 transporter.verify((err, success) => {
-  err ? console.error('❌ Email Error:', err) : console.log('✅ Email Ready');
+  if (err) {
+    console.error('❌ SMTP Connection Failed:', err.message);
+  } else {
+    console.log('✅ SMTP Ready - Emails will be sent via port 587');
+  }
 });
 
-// Mood Route (unchanged)
+// Mood Route
 app.post('/api/mood', async (req, res) => {
   try {
     const { mood, message } = req.body;
+
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Queen's Love" <${process.env.SMTP_USER}>`,
       to: process.env.RECEIVER_EMAIL,
       subject: `Queen's Mood: ${mood} ❤️`,
       html: `
-        <div style="font-family: Georgia; padding: 30px; background: #fff0fa; border: 3px solid #FF69B4; border-radius: 20px;">
+        <div style="font-family: Georgia; padding: 30px; background: #fff0fa; border: 3px solid #FF69B4; border-radius: 20px; max-width: 600px; margin: auto;">
           <h2 style="color: #FF1493; text-align: center;">👑 Royal Mood Alert 👑</h2>
           <p style="font-size: 20px; text-align: center;"><strong>Feeling:</strong> ${mood}</p>
-          <blockquote style="font-style: italic; color: #666; background: white; padding: 20px; border-left: 5px solid #FF1493;">
+          <blockquote style="font-style: italic; color: #666; background: white; padding: 20px; border-left: 5px solid #FF1493; margin: 25px 0;">
             "${message}"
           </blockquote>
-          <p style="text-align: center; color: #888;">${new Date().toLocaleString('en-IN')}</p>
+          <p style="text-align: center; color: #888; font-size: 14px;">${new Date().toLocaleString('en-IN')}</p>
         </div>
       `
     };
+
     await transporter.sendMail(mailOptions);
     res.json({ success: true });
   } catch (error) {
@@ -76,7 +87,7 @@ app.post('/api/mood', async (req, res) => {
   }
 });
 
-// Romantic Vault Route (unchanged)
+// Romantic Vault Route
 app.post('/api/romantic-reveal', async (req, res) => {
   try {
     const { moodScore, selfObsessionScore, bhau, image, signature, message } = req.body;
@@ -91,17 +102,17 @@ app.post('/api/romantic-reveal', async (req, res) => {
       .toBuffer();
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Queen's Vault" <${process.env.SMTP_USER}>`,
       to: process.env.RECEIVER_EMAIL,
       subject: "🔥 VAULT OPENED: Queen's Secret Revealed! 🔥",
       html: `
-        <div style="background:#000;color:#fff;padding:40px;font-family:Arial;border:5px double #FF1493;border-radius:30px;text-align:center;">
+        <div style="background:#000;color:#fff;padding:40px;font-family:Arial;border:5px double #FF1493;border-radius:30px;text-align:center;max-width:700px;margin:auto;">
           <h1 style="color:#FF1493;font-size:40px;">VAULT UNLOCKED ❤️</h1>
-          <p>Romantic Mood: <strong>${moodScore}% 🥵</strong></p>
-          <p>Beauty Level: <strong>${selfObsessionScore}% ✨</strong></p>
-          <p>Demand: <strong>${bhau || 'Pure Love 😇'}</strong></p>
-          <p style="font-style:italic;margin:30px;">"${message}"</p>
-          <p style="color:#FF69B4;font-size:24px;">Photo + Signature Attached 👇</p>
+          <p style="font-size:22px;">Romantic Mood: <strong>${moodScore}% 🥵</strong></p>
+          <p style="font-size:22px;">Beauty Level: <strong>${selfObsessionScore}% ✨</strong></p>
+          <p style="font-size:20px;">Demand: <strong>${bhau || 'Pure Love 😇'}</strong></p>
+          <p style="font-style:italic;margin:30px;font-size:20px;">"${message}"</p>
+          <p style="color:#FF69B4;font-size:24px;">Photo + Signature Attached Below 👇</p>
         </div>
       `,
       attachments: [
@@ -118,16 +129,14 @@ app.post('/api/romantic-reveal', async (req, res) => {
   }
 });
 
-// ==================== ORDERS ROUTE - FULLY WORKING ====================
+// Orders Route
 app.post('/api/orders', async (req, res) => {
   try {
     const { items, loveNote } = req.body;
-
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: "Basket is empty!" });
     }
 
-    // Save to DB
     const newOrder = new Order({
       items,
       loveNote: loveNote || "No note ❤️",
@@ -135,7 +144,6 @@ app.post('/api/orders', async (req, res) => {
     });
     await newOrder.save();
 
-    // Create beautiful item list for email
     const itemsHTML = items.map((item, idx) => `
       <tr>
         <td style="padding:12px 0;border-bottom:1px dotted #FF69B4;">
@@ -147,7 +155,7 @@ app.post('/api/orders', async (req, res) => {
     `).join('');
 
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Queen's Treats" <${process.env.SMTP_USER}>`,
       to: process.env.RECEIVER_EMAIL,
       subject: `🎉 NEW ROYAL ORDER! ${items.length} Treat${items.length > 1 ? 's' : ''} Ordered ❤️`,
       html: `
@@ -156,14 +164,12 @@ app.post('/api/orders', async (req, res) => {
           <p style="text-align:center;font-size:20px;color:#D4AF37;">
             <strong>Total Items:</strong> ${items.length} ❤️
           </p>
-
           <div style="background:#fff;padding:25px;border-radius:20px;border:2px solid #FF69B4;margin:30px 0;">
             <h2 style="color:#FF1493;text-align:center;margin-bottom:20px;">Ordered Treats:</h2>
             <table style="width:100%;border-collapse:collapse;">
               ${itemsHTML}
             </table>
           </div>
-
           ${loveNote ? `
             <div style="background:#f0e6ff;padding:20px;border-radius:15px;border-left:6px solid #FF1493;margin:30px 0;">
               <p style="font-size:18px;font-style:italic;color:#555;margin:0;">
@@ -171,12 +177,10 @@ app.post('/api/orders', async (req, res) => {
               </p>
             </div>
           ` : ''}
-
           <div style="text-align:center;margin-top:40px;">
             <p style="color:#FF69B4;font-size:24px;font-weight:bold;">Delivery: 6:30 PM - 7:00 PM</p>
             <p style="color:#888;font-size:14px;">Order placed: ${new Date().toLocaleString('en-IN')}</p>
           </div>
-
           <p style="text-align:center;color:#FF1493;font-size:18px;margin-top:40px;">
             Your delivery partner is already blushing while packing... 😊
           </p>
@@ -185,22 +189,17 @@ app.post('/api/orders', async (req, res) => {
     };
 
     await transporter.sendMail(mailOptions);
-
-    res.json({ 
-      success: true, 
-      message: "Order placed successfully! Email sent to King ❤️",
-      orderId: newOrder._id 
-    });
-
+    res.json({ success: true, message: "Order placed! Email sent ❤️", orderId: newOrder._id });
   } catch (error) {
     console.error("Order Error:", error);
-    res.status(500).json({ success: false, message: "Failed to place order" });
+    res.status(500).json({ success: false });
   }
 });
 
 // Server Start
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📧 Orders will be sent to: ${process.env.RECEIVER_EMAIL}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📧 Sending from: ${process.env.SMTP_USER}`);
+  console.log(`📬 Delivering to: ${process.env.RECEIVER_EMAIL}`);
 });
