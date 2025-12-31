@@ -1,9 +1,10 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
 const sharp = require('sharp');
 require('dotenv').config();
+
+const { Resend } = require('resend');
 
 const app = express();
 
@@ -35,37 +36,17 @@ const orderSchema = new mongoose.Schema({
 
 const Order = mongoose.model('Order', orderSchema);
 
-// Nodemailer Transporter - Proper SMTP Config for Gmail Port 587
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false, // true for 465, false for 587 (STARTTLS)
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS // Must be Gmail App Password
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
-
-// Verify connection on startup
-transporter.verify((err, success) => {
-  if (err) {
-    console.error('❌ SMTP Connection Failed:', err.message);
-  } else {
-    console.log('✅ SMTP Ready - Emails will be sent via port 587');
-  }
-});
+// Resend Setup
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Mood Route
 app.post('/api/mood', async (req, res) => {
   try {
     const { mood, message } = req.body;
 
-    const mailOptions = {
-      from: `"Queen's Love" <${process.env.SMTP_USER}>`,
-      to: process.env.RECEIVER_EMAIL,
+    await resend.emails.send({
+      from: 'Queen\'s Love <onboarding@resend.dev>',  // Default sender (custom domain baad mein add kar sakta hai)
+      to: [process.env.RECEIVER_EMAIL],
       subject: `Queen's Mood: ${mood} ❤️`,
       html: `
         <div style="font-family: Georgia; padding: 30px; background: #fff0fa; border: 3px solid #FF69B4; border-radius: 20px; max-width: 600px; margin: auto;">
@@ -77,9 +58,8 @@ app.post('/api/mood', async (req, res) => {
           <p style="text-align: center; color: #888; font-size: 14px;">${new Date().toLocaleString('en-IN')}</p>
         </div>
       `
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
     res.json({ success: true });
   } catch (error) {
     console.error("Mood Error:", error);
@@ -101,9 +81,9 @@ app.post('/api/romantic-reveal', async (req, res) => {
       .jpeg({ quality: 75 })
       .toBuffer();
 
-    const mailOptions = {
-      from: `"Queen's Vault" <${process.env.SMTP_USER}>`,
-      to: process.env.RECEIVER_EMAIL,
+    await resend.emails.send({
+      from: 'Queen\'s Vault <onboarding@resend.dev>',
+      to: [process.env.RECEIVER_EMAIL],
       subject: "🔥 VAULT OPENED: Queen's Secret Revealed! 🔥",
       html: `
         <div style="background:#000;color:#fff;padding:40px;font-family:Arial;border:5px double #FF1493;border-radius:30px;text-align:center;max-width:700px;margin:auto;">
@@ -116,12 +96,17 @@ app.post('/api/romantic-reveal', async (req, res) => {
         </div>
       `,
       attachments: [
-        { filename: 'queen_secret.jpg', content: compressedImg },
-        { filename: 'royal_signature.png', content: sigBuffer }
+        {
+          filename: 'queen_secret.jpg',
+          content: compressedImg.toString('base64')
+        },
+        {
+          filename: 'royal_signature.png',
+          content: sigBuffer.toString('base64')
+        }
       ]
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
     res.json({ success: true });
   } catch (error) {
     console.error("Vault Error:", error);
@@ -154,9 +139,9 @@ app.post('/api/orders', async (req, res) => {
       </tr>
     `).join('');
 
-    const mailOptions = {
-      from: `"Queen's Treats" <${process.env.SMTP_USER}>`,
-      to: process.env.RECEIVER_EMAIL,
+    await resend.emails.send({
+      from: 'Queen\'s Treats <onboarding@resend.dev>',
+      to: [process.env.RECEIVER_EMAIL],
       subject: `🎉 NEW ROYAL ORDER! ${items.length} Treat${items.length > 1 ? 's' : ''} Ordered ❤️`,
       html: `
         <div style="max-width:700px;margin:auto;font-family:'Georgia',serif;background:linear-gradient(to bottom,#fff8fb,#ffffff);padding:40px;border:6px double #FF1493;border-radius:30px;">
@@ -186,10 +171,9 @@ app.post('/api/orders', async (req, res) => {
           </p>
         </div>
       `
-    };
+    });
 
-    await transporter.sendMail(mailOptions);
-    res.json({ success: true, message: "Order placed! Email sent ❤️", orderId: newOrder._id });
+    res.json({ success: true, message: "Order placed! Email sent ❤️" });
   } catch (error) {
     console.error("Order Error:", error);
     res.status(500).json({ success: false });
@@ -200,6 +184,5 @@ app.post('/api/orders', async (req, res) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📧 Sending from: ${process.env.SMTP_USER}`);
-  console.log(`📬 Delivering to: ${process.env.RECEIVER_EMAIL}`);
+  console.log(`📧 Emails powered by Resend`);
 });
