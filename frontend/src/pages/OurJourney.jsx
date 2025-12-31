@@ -93,7 +93,7 @@ const OurJourney = () => {
     }
 
     try {
-      await axios.post('http://localhost:5000/api/mood', {
+      await axios.post('https://newyear-n16i.onrender.com/api/mood', {
         mood: m.label,
         message: m.msg
       });
@@ -154,7 +154,7 @@ const OurJourney = () => {
         reader.readAsDataURL(selectedFile);
       });
 
-      await axios.post('http://localhost:5000/api/romantic-reveal', {
+      await axios.post('https://newyear-n16i.onrender.com/api/romantic-reveal', {
         moodScore,
         selfObsessionScore,
         bhau,
