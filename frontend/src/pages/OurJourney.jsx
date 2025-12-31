@@ -344,7 +344,7 @@ const OurJourney = () => {
                       <p className="text-gray-300 text-sm uppercase tracking-wider mb-4 font-semibold">Mandatory Nakhra Checklist ✨</p>
                       <label className="flex items-center gap-4 cursor-pointer">
                         <input type="checkbox" checked={nakhraChecks.noAnger} onChange={(e) => setNakhraChecks({ ...nakhraChecks, noAnger: e.target.checked })} className="w-6 h-6 accent-[#FF1493] rounded-lg" />
-                        <span className="text-white text-base">Main aaj bilkul gussa nahi karungi 😇</span>
+                        <span className="text-white text-base">Main [SAKSHI] aaj bilkul gussa nahi karungi 😇</span>
                       </label>
                     </div>
 
